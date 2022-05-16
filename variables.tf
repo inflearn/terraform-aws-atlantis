@@ -175,9 +175,12 @@ variable "allow_github_webhooks" {
 }
 
 variable "github_webhooks_cidr_blocks" {
-  description = "List of CIDR blocks used by GitHub webhooks" # This is hardcoded to avoid dependency on github provider. Source: https://api.github.com/meta
+  description = "List of CIDR blocks used by GitHub webhooks"
+  # This is hardcoded to avoid dependency on github provider. Source: https://api.github.com/meta
   type        = list(string)
-  default     = ["140.82.112.0/20", "185.199.108.0/22", "192.30.252.0/22", "143.55.64.0/20"]
+  default     = [
+    "140.82.112.0/20", "185.199.108.0/22", "192.30.252.0/22", "143.55.64.0/20"
+  ]
 }
 
 variable "whitelist_unauthenticated_cidr_blocks" {
@@ -212,6 +215,12 @@ variable "acm_certificate_domain_name" {
 }
 
 # Route53
+variable "route53_zone_id" {
+  description = "Route53 zone ID"
+  type        = string
+  default     = null
+}
+
 variable "route53_zone_name" {
   description = "Route53 zone name to create ACM certificate in and main A-record, without trailing dot"
   type        = string
@@ -445,7 +454,7 @@ variable "stop_timeout" {
 
 variable "container_depends_on" {
   description = "The dependencies defined for container startup and shutdown. A container can contain multiple dependencies. When a dependency is defined for container startup, for container shutdown it is reversed. The condition can be one of START, COMPLETE, SUCCESS or HEALTHY"
-  type = list(object({
+  type        = list(object({
     containerName = string
     condition     = string
   }))
@@ -472,7 +481,7 @@ variable "mount_points" {
 
 variable "volumes_from" {
   description = "A list of VolumesFrom maps which contain \"sourceContainer\" (name of the container that has the volumes to mount) and \"readOnly\" (whether the container can write to the volume)"
-  type = list(object({
+  type        = list(object({
     sourceContainer = string
     readOnly        = bool
   }))
@@ -491,7 +500,7 @@ variable "user" {
 
 variable "ulimits" {
   description = "Container ulimit settings. This is a list of maps, where each map should contain \"name\", \"hardLimit\" and \"softLimit\""
-  type = list(object({
+  type        = list(object({
     name      = string
     hardLimit = number
     softLimit = number
@@ -508,7 +517,7 @@ variable "external_task_definition_updates" {
 # https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_FirelensConfiguration.html
 variable "firelens_configuration" {
   description = "The FireLens configuration for the container. This is used to specify and configure a log router for container logs. For more details, see https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_FirelensConfiguration.html"
-  type = object({
+  type        = object({
     type    = string
     options = map(string)
   })
@@ -616,7 +625,7 @@ variable "atlantis_bitbucket_base_url" {
 
 variable "custom_environment_secrets" {
   description = "List of additional secrets the container will use (list should contain maps with `name` and `valueFrom`)"
-  type = list(object(
+  type        = list(object(
     {
       name      = string
       valueFrom = string
@@ -627,7 +636,7 @@ variable "custom_environment_secrets" {
 
 variable "custom_environment_variables" {
   description = "List of additional environment variables the container will use (list should contain maps with `name` and `value`)"
-  type = list(object(
+  type        = list(object(
     {
       name  = string
       value = string

@@ -131,7 +131,7 @@ data "aws_partition" "current" {}
 data "aws_region" "current" {}
 
 data "aws_route53_zone" "this" {
-  count = var.create_route53_record || var.create_route53_aaaa_record ? 1 : 0
+  count = var.route53_zone_id == null || var.create_route53_record || var.create_route53_aaaa_record ? 1 : 0
 
   name         = var.route53_zone_name
   private_zone = var.route53_private_zone
@@ -401,7 +401,7 @@ module "acm" {
 
   domain_name = var.acm_certificate_domain_name == "" ? join(".", [var.name, var.route53_zone_name]) : var.acm_certificate_domain_name
 
-  zone_id = var.certificate_arn == "" ? element(concat(data.aws_route53_zone.this.*.id, [""]), 0) : ""
+  zone_id = var.certificate_arn == "" ? (var.route53_zone_id == null ? element(concat(data.aws_route53_zone.this.*.id, [""]), 0) : var.route53_zone_id) : ""
 
   tags = local.tags
 }
@@ -412,7 +412,7 @@ module "acm" {
 resource "aws_route53_record" "atlantis" {
   count = var.create_route53_record ? 1 : 0
 
-  zone_id = data.aws_route53_zone.this[0].zone_id
+  zone_id = var.route53_zone_id == null ? data.aws_route53_zone.this[0].zone_id : var.route53_zone_id
   name    = var.route53_record_name != null ? var.route53_record_name : var.name
   type    = "A"
 
@@ -426,7 +426,7 @@ resource "aws_route53_record" "atlantis" {
 resource "aws_route53_record" "atlantis_aaaa" {
   count = var.create_route53_aaaa_record ? 1 : 0
 
-  zone_id = data.aws_route53_zone.this[0].zone_id
+  zone_id = var.route53_zone_id == null ? data.aws_route53_zone.this[0].zone_id : var.route53_zone_id
   name    = var.route53_record_name != null ? var.route53_record_name : var.name
   type    = "AAAA"
 
