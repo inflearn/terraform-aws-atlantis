@@ -554,6 +554,11 @@ variable "allow_repo_config" {
   default     = "false"
 }
 
+variable "repo_config_json" {
+  type    = string
+  default = ""
+}
+
 variable "atlantis_log_level" {
   description = "Log level that Atlantis will run with. Accepted values are: <debug|info|warn|error>"
   type        = string

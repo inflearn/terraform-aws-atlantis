@@ -1,12 +1,16 @@
 locals {
   # VPC - existing or new?
   vpc_id             = var.vpc_id == "" ? module.vpc.vpc_id : var.vpc_id
-  private_subnet_ids = coalescelist(module.vpc.private_subnets, var.private_subnet_ids, [""])
-  public_subnet_ids  = coalescelist(module.vpc.public_subnets, var.public_subnet_ids, [""])
+  private_subnet_ids = coalescelist(module.vpc.private_subnets, var.private_subnet_ids, [
+    ""
+  ])
+  public_subnet_ids = coalescelist(module.vpc.public_subnets, var.public_subnet_ids, [
+    ""
+  ])
 
   # Atlantis
   atlantis_image = var.atlantis_image == "" ? "ghcr.io/runatlantis/atlantis:${var.atlantis_version}" : var.atlantis_image
-  atlantis_url = "https://${coalesce(
+  atlantis_url   = "https://${coalesce(
     var.atlantis_fqdn,
     element(concat(aws_route53_record.atlantis.*.fqdn, [""]), 0),
     module.alb.lb_dns_name,
@@ -31,12 +35,20 @@ locals {
   ecs_cluster_id = var.create_ecs_cluster ? module.ecs.ecs_cluster_id : var.ecs_cluster_id
 
   # Container definitions
-  container_definitions = var.custom_container_definitions == "" ? var.atlantis_bitbucket_user_token != "" ? jsonencode(concat([module.container_definition_bitbucket.json_map_object], var.extra_container_definitions)) : jsonencode(concat([module.container_definition_github_gitlab.json_map_object], var.extra_container_definitions)) : var.custom_container_definitions
+  container_definitions = var.custom_container_definitions == "" ? var.atlantis_bitbucket_user_token != "" ? jsonencode(concat([
+    module.container_definition_bitbucket.json_map_object
+  ], var.extra_container_definitions)) : jsonencode(concat([
+    module.container_definition_github_gitlab.json_map_object
+  ], var.extra_container_definitions)) : var.custom_container_definitions
 
   container_definition_environment = [
     {
       name  = "ATLANTIS_ALLOW_REPO_CONFIG"
       value = var.allow_repo_config
+    },
+    {
+      name  = "ATLANTIS_REPO_CONFIG_JSON"
+      value = var.repo_config_json
     },
     {
       name  = "ATLANTIS_GITLAB_HOSTNAME"
@@ -106,7 +118,9 @@ locals {
     var.tags,
   )
 
-  policies_arn = var.policies_arn != null ? var.policies_arn : ["arn:${data.aws_partition.current.partition}:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"]
+  policies_arn = var.policies_arn != null ? var.policies_arn : [
+    "arn:${data.aws_partition.current.partition}:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+  ]
 
   # Chunk these into groups of 5, the limit for IPs in an AWS lb listener
   whitelist_unauthenticated_cidr_block_chunks = chunklist(
@@ -119,11 +133,13 @@ locals {
   gid = var.user == null ? 0 : split(":", var.user)[1]
 
   # default mount points for efs if ephemeral storage is not enabled and mount points aren't specified
-  mount_points = var.enable_ephemeral_storage || length(var.mount_points) > 0 ? var.mount_points : [{
-    containerPath = "/home/atlantis"
-    sourceVolume  = "efs-storage"
-    readOnly      = "false"
-  }]
+  mount_points = var.enable_ephemeral_storage || length(var.mount_points) > 0 ? var.mount_points : [
+    {
+      containerPath = "/home/atlantis"
+      sourceVolume  = "efs-storage"
+      readOnly      = "false"
+    }
+  ]
 }
 
 data "aws_partition" "current" {}
@@ -226,7 +242,10 @@ module "alb" {
 
   vpc_id          = local.vpc_id
   subnets         = local.public_subnet_ids
-  security_groups = flatten([module.alb_https_sg.security_group_id, module.alb_http_sg.security_group_id, var.security_group_ids])
+  security_groups = flatten([
+    module.alb_https_sg.security_group_id, module.alb_http_sg.security_group_id,
+    var.security_group_ids
+  ])
 
   access_logs = {
     enabled = var.alb_logging_enabled
@@ -241,7 +260,7 @@ module "alb" {
   drop_invalid_header_fields = var.alb_drop_invalid_header_fields
 
   listener_ssl_policy_default = var.alb_listener_ssl_policy_default
-  https_listeners = [
+  https_listeners             = [
     {
       target_group_index   = 0
       port                 = 443
@@ -258,7 +277,7 @@ module "alb" {
       port        = 80
       protocol    = "HTTP"
       action_type = "redirect"
-      redirect = {
+      redirect    = {
         port        = 443
         protocol    = "HTTPS"
         status_code = "HTTP_301"
@@ -273,7 +292,7 @@ module "alb" {
       backend_port         = var.atlantis_port
       target_type          = "ip"
       deregistration_delay = 10
-      health_check = {
+      health_check         = {
         path = "/healthz"
       }
     },
@@ -381,11 +400,13 @@ module "efs_sg" {
   vpc_id      = local.vpc_id
   description = "Security group allowing access to the EFS storage"
 
-  ingress_cidr_blocks = [var.cidr]
-  ingress_with_source_security_group_id = [{
-    rule                     = "nfs-tcp",
-    source_security_group_id = module.atlantis_sg.security_group_id
-  }]
+  ingress_cidr_blocks                   = [var.cidr]
+  ingress_with_source_security_group_id = [
+    {
+      rule                     = "nfs-tcp",
+      source_security_group_id = module.atlantis_sg.security_group_id
+    }
+  ]
 
   tags = local.tags
 }
@@ -399,9 +420,13 @@ module "acm" {
 
   create_certificate = var.certificate_arn == ""
 
-  domain_name = var.acm_certificate_domain_name == "" ? join(".", [var.name, var.route53_zone_name]) : var.acm_certificate_domain_name
+  domain_name = var.acm_certificate_domain_name == "" ? join(".", [
+    var.name, var.route53_zone_name
+  ]) : var.acm_certificate_domain_name
 
-  zone_id = var.certificate_arn == "" ? (var.route53_zone_id == null ? element(concat(data.aws_route53_zone.this.*.id, [""]), 0) : var.route53_zone_id) : ""
+  zone_id = var.certificate_arn == "" ? (var.route53_zone_id == null ? element(concat(data.aws_route53_zone.this.*.id, [
+    ""
+  ]), 0) : var.route53_zone_id) : ""
 
   tags = local.tags
 }
@@ -450,13 +475,15 @@ resource "aws_efs_file_system" "this" {
 resource "aws_efs_mount_target" "this" {
   # we coalescelist in order to specify the resource keys when we create the subnets using the VPC or they're specified for us.  This works around the for_each value depends on attributes which can't be determined until apply error
   for_each = {
-    for k, v in zipmap(coalescelist(var.private_subnets, var.private_subnet_ids), local.private_subnet_ids) : k => v
-    if var.enable_ephemeral_storage == false
+  for k, v in zipmap(coalescelist(var.private_subnets, var.private_subnet_ids), local.private_subnet_ids) : k => v
+  if var.enable_ephemeral_storage == false
   }
 
   file_system_id  = aws_efs_file_system.this[0].id
   subnet_id       = each.value
-  security_groups = [module.efs_sg[0].security_group_id, module.atlantis_sg.security_group_id]
+  security_groups = [
+    module.efs_sg[0].security_group_id, module.atlantis_sg.security_group_id
+  ]
 }
 
 resource "aws_efs_access_point" "this" {
@@ -502,7 +529,9 @@ data "aws_iam_policy_document" "ecs_tasks" {
 
     principals {
       type        = "Service"
-      identifiers = compact(distinct(concat(["ecs-tasks.amazonaws.com"], var.trusted_principals)))
+      identifiers = compact(distinct(concat([
+        "ecs-tasks.amazonaws.com"
+      ], var.trusted_principals)))
     }
 
     dynamic "principals" {
@@ -617,7 +646,7 @@ module "container_definition_github_gitlab" {
 
   log_configuration = {
     logDriver = "awslogs"
-    options = {
+    options   = {
       awslogs-region        = data.aws_region.current.name
       awslogs-group         = aws_cloudwatch_log_group.atlantis.name
       awslogs-stream-prefix = "ecs"
@@ -674,7 +703,7 @@ module "container_definition_bitbucket" {
 
   log_configuration = {
     logDriver = "awslogs"
-    options = {
+    options   = {
       awslogs-region        = data.aws_region.current.name
       awslogs-group         = aws_cloudwatch_log_group.atlantis.name
       awslogs-stream-prefix = "ecs"
