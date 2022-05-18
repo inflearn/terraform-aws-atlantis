@@ -92,7 +92,7 @@ locals {
     },
     {
       name  = "TERRAGRUNT_IAM_ROLE"
-      value = "${var.name}-ecs_task_execution"
+      value = aws_iam_role.ecs_task_execution.arn
     }
   ]
 
