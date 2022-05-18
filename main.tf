@@ -90,6 +90,10 @@ locals {
       name  = "ATLANTIS_HIDE_PREV_PLAN_COMMENTS"
       value = var.atlantis_hide_prev_plan_comments
     },
+    {
+      name  = "TERRAGRUNT_IAM_ROLE"
+      value = "${var.name}-ecs_task_execution"
+    }
   ]
 
   # ECS task definition
